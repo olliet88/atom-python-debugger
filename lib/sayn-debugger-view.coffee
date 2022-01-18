@@ -45,7 +45,7 @@ class SaynDebuggerView extends View
       @div class: 'debug-inputs', =>
         @subview "tasksEntryView", new TextEditorView
           mini: true,
-          placeholderText: "Enter tasks here"
+          placeholderText: "Optional: Enter Tasks Here"
 
 
       @div class: "toggles", =>
@@ -65,27 +65,21 @@ class SaynDebuggerView extends View
           @div class: 'btn-group left', =>
             @button outlet: "breakpointBtn", click: "toggleBreakpoint", class: "btn", =>
               @span "Add Breakpoint"
-            @span class: "span between-buttons", =>
-              @span ""
             @button outlet: "stepOverBtn", click: "stepOverBtnPressed", class: "btn", =>
               @span "Next"
             @button outlet: "stepInBtn", click: "stepInBtnPressed", class: "btn", =>
               @span "Step"
             @button outlet: "varBtn", click: "varBtnPressed", class: "btn", =>
               @span "Variables"
-            @span class: "span between-buttons", =>
-              @span ""
             @button outlet: "returnBtn", click: "returnBtnPressed", class: "btn", =>
               @span "Return"
             @button outlet: "continueBtn", click: "continueBtnPressed", class: "btn", =>
               @span "Continue"
-            @span class: "span between-buttons", =>
-              @span ""
             @button outlet: "clearBtn", click: "clearOutput", class: "btn", =>
               @span "Clear"
         @subview "commandEntryView", new TextEditorView
           mini: true,
-          placeholderText: "> Enter debugger commands here"
+          placeholderText: "Debugger Commands"
 
   toggleBreakpoint: ->
     editor = atom.workspace.getActiveTextEditor()
@@ -160,6 +154,15 @@ class SaynDebuggerView extends View
     pathToWorkspace = relative[0] || (path.dirname(activePath) if activePath?)
     pathToWorkspace
 
+  pythonEnvPath: ->
+    # If there's a .venv_path file, use it.
+    venvFilePath = path.join(@workspacePath(), ".venv")
+    if fs.existsSync(venvFilePath)
+      venv_path = fs.readFileSync(venvFilePath, 'utf8').trim()
+      return venv_path
+    else
+      return atom.config.get "sayn-debugger.pythonEnv"
+
   runSayn: ->
     @stopApp() if @backendDebugger
     @debuggedFileArgs = @getInputArguments()
@@ -223,7 +226,7 @@ class SaynDebuggerView extends View
 
   runDebuggerWithPip: (command) ->
     console.log("Running pip first...")
-    pythonEnv = atom.config.get "sayn-debugger.pythonEnv"
+    pythonEnv = @pythonEnvPath()
     pip = path.join(pythonEnv, "bin/pip3")
     console.log(pip)
     requirementsFile = atom.config.get "sayn-debugger.requirementsFile"
@@ -248,7 +251,7 @@ class SaynDebuggerView extends View
 
   runBackendDebugger: (command) ->
     args = [path.join(@backendDebuggerPath, @backendDebuggerName)]
-    pythonEnv = atom.config.get "sayn-debugger.pythonEnv"
+    pythonEnv = @pythonEnvPath()
     # console.log("sayn-debugger: using python " + pythonEnv)
     python = path.join(pythonEnv, "bin/python3")
     sayn = path.join(pythonEnv, "bin/sayn")

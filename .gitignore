@@ -1,3 +1,4 @@
 node_modules/
 resources/__pycache__/
 logs/
+.venv

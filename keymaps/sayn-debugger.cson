@@ -7,6 +7,8 @@
 
 # For more detailed documentation see
 # https://atom.io/docs/latest/behind-atom-keymaps-in-depth
+".platform-darwin atom-workspace [data-grammar='source python']":
+  "cmd-alt-;": "sayn-debugger:breakpoint"
+
 ".platform-darwin atom-workspace":
   "cmd-alt-/": "sayn-debugger:toggle"
-  "cmd-alt-;": "sayn-debugger:breakpoint"
