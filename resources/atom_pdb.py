@@ -19,7 +19,8 @@ class AtomPDB(pdb.Pdb):
 
     def __init__(self, **kwargs):
         kwargs.pop("stdout", None)
-        pdb.Pdb.__init__(self, stdout=sys.__stdout__, **kwargs)
+        skipList = ["sayn.*"]
+        pdb.Pdb.__init__(self, stdout=sys.__stdout__, **kwargs, skip=skipList)
         self.prompt = ""
 
     ver = sys.version_info

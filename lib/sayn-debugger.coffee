@@ -3,25 +3,29 @@ path = require "path"
 Breakpoint = require "./breakpoint"
 BreakpointStore = require "./breakpoint-store"
 
-module.exports = PythonDebugger =
+module.exports = SaynDebugger =
   pythonDebuggerView: null
   subscriptions: null
 
   config:
-    pythonExecutable:
-      title: "Path to Python executable to use during debugging"
+    pythonEnv:
+      title: "Path to Python environment to use while debugging."
       type: "string"
-      default: "python"
+      default: "$VIRTUAL_ENV"
+    requirementsFile:
+      title: "Path to pip requirements file for dependency management"
+      type: "string"
+      default: "requirements.txt"
     focusOnCmd:
       title: "Focus editor on current line change"
       type: "boolean"
       default: false
 
   createDebuggerView: (backendDebugger) ->
-    unless @pythonDebuggerView?
-      PythonDebuggerView = require "./python-debugger-view"
-      @pythonDebuggerView = new PythonDebuggerView(@breakpointStore)
-    @pythonDebuggerView
+    unless @saynDebuggerView?
+      SaynDebuggerView = require "./sayn-debugger-view"
+      @saynDebuggerView = new SaynDebuggerView(@breakpointStore)
+    @saynDebuggerView
 
   activate: ({attached}={}) ->
 
@@ -30,17 +34,17 @@ module.exports = PythonDebugger =
     @createDebuggerView().toggle() if attached
 
     @subscriptions.add atom.commands.add "atom-workspace",
-      "python-debugger:toggle": => @createDebuggerView().toggle()
-      "python-debugger:breakpoint": => @pythonDebuggerView?.toggleBreakpoint()
-      "python-debugger:clear-all-breakpoints": => @pythonDebuggerView?.clearBreakpoints()
+      "sayn-debugger:toggle": => @createDebuggerView().toggle()
+      "sayn-debugger:breakpoint": => @saynDebuggerView?.toggleBreakpoint()
+      "sayn-debugger:clear-all-breakpoints": => @saynDebuggerView?.clearBreakpoints()
 
   deactivate: ->
     @backendDebuggerInputView.destroy()
     @subscriptions.dispose()
-    @pythonDebuggerView.destroy()
+    @saynDebuggerView.destroy()
 
   serialize: ->
-    pythonDebuggerViewState: @pythonDebuggerView?.serialize()
+    saynDebuggerViewState: @saynDebuggerView?.serialize()
 
     activePath = editor?.getPath()
     relative = atom.project.relativizePath(activePath)

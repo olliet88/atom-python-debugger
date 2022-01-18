@@ -1,19 +1,19 @@
 "context-menu":
   "atom-text-editor": [
     {
-      "label": "Toggle python-debugger"
-      "command": "python-debugger:toggle"
+      "label": "Toggle sayn-debugger"
+      "command": "sayn-debugger:toggle"
     }
   ]
 "menu": [
   {
     "label": "Packages"
     "submenu": [
-      "label": "python-debugger"
+      "label": "sayn-debugger"
       "submenu": [
         {
           "label": "Toggle"
-          "command": "python-debugger:toggle"
+          "command": "sayn-debugger:toggle"
         }
       ]
     ]

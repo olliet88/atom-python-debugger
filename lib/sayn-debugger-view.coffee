@@ -1,4 +1,4 @@
-{Point, Disposable, CompositeDisposable} = require "atom"
+{Point, Disposable, CompositeDisposable, BufferedProcess} = require "atom"
 {$, $$, View, TextEditorView} = require "atom-space-pen-views"
 Breakpoint = require "./breakpoint"
 BreakpointStore = require "./breakpoint-store"
@@ -8,11 +8,14 @@ path = require "path"
 fs = require "fs"
 
 module.exports =
-class PythonDebuggerView extends View
+class SaynDebuggerView extends View
   debuggedFileName: null
   debuggedFileArgs: []
   backendDebuggerPath: null
   backendDebuggerName: "atom_pdb.py"
+  saynDebugMode: false
+  autoUpdatePipDependencies: false
+  pipProcess = null
 
   getCurrentFilePath: ->
     return "" unless editor = atom.workspace.getActivePaneItem()
@@ -21,45 +24,68 @@ class PythonDebuggerView extends View
 
   getDebuggerPath: ->
     pkgs = atom.packages.getPackageDirPaths()[0]
-    debuggerPath = path.join(pkgs, "python-debugger", "resources")
+    console.log(pkgs)
+    debuggerPath = path.join(pkgs, "sayn-debugger", "resources")
     return debuggerPath
 
   @content: ->
-    @div class: "pythonDebuggerView", =>
-      @subview "argsEntryView", new TextEditorView
-        mini: true,
-        placeholderText: "> Enter input arguments here"
-      @subview "commandEntryView", new TextEditorView
-        mini: true,
-        placeholderText: "> Enter debugger commands here"
-      @button outlet: "breakpointBtn", click: "toggleBreakpoint", class: "btn", =>
-        @span "breakpoint"
-      @button class: "btn", =>
-        @span "        "
-      @button outlet: "runBtn", click: "runApp", class: "btn", =>
-        @span "run"
-      @button outlet: "stopBtn", click: "stopApp", class: "btn", =>
-        @span "stop"
-      @button class: "btn", =>
-        @span "        "
-      @button outlet: "stepOverBtn", click: "stepOverBtnPressed", class: "btn", =>
-        @span "next"
-      @button outlet: "stepInBtn", click: "stepInBtnPressed", class: "btn", =>
-        @span "step"
-      @button outlet: "varBtn", click: "varBtnPressed", class: "btn", =>
-        @span "variables"
-      @button class: "btn", =>
-        @span "        "
-      @button outlet: "returnBtn", click: "returnBtnPressed", class: "btn", =>
-        @span "return"
-      @button outlet: "continueBtn", click: "continueBtnPressed", class: "btn", =>
-        @span "continue"
-      @button class: "btn", =>
-        @span "        "
-      @button outlet: "clearBtn", click: "clearOutput", class: "btn", =>
-        @span "clear"
+    @div class: "saynDebuggerView", =>
+      @div outlet: 'toolbar', class: 'btn-toolbar-top', =>
+        @div class: 'btn-group right', =>
+          @button outlet: 'closeBtn', class: 'btn icon icon-x', click: 'destroy'
+        @div class: 'btn-group left', =>
+          @button outlet: "runBtn", click: "runSayn", class: "btn", =>
+            @span "Run"
+          @button outlet: "compileBtn", click: "compileSayn", class: "btn", =>
+            @span "Compile"
+          @button outlet: "stopBtn", click: "stopApp", class: "btn", =>
+            @span "Stop"
+
+
+      @div class: 'debug-inputs', =>
+        @subview "tasksEntryView", new TextEditorView
+          mini: true,
+          placeholderText: "Enter tasks here"
+
+
+      @div class: "toggles", =>
+        @div class: 'btn-toolbar-bottom', =>
+          @div class: 'btn-group left', =>
+            @button click: "toggleSaynDebugMode", class: "btn", =>
+              @span "Toggle Debug Mode"
+            @button click: "togglePipAutoInstall", class: "btn", =>
+              @span "Toggle Auto Pip"
+
+
       @div class: "panel-body", outlet: "outputContainer", =>
         @pre class: "command-output", outlet: "output"
+
+      @div class: 'debug-inputs', =>
+        @div class: 'btn-toolbar-bottom', =>
+          @div class: 'btn-group left', =>
+            @button outlet: "breakpointBtn", click: "toggleBreakpoint", class: "btn", =>
+              @span "Add Breakpoint"
+            @span class: "span between-buttons", =>
+              @span ""
+            @button outlet: "stepOverBtn", click: "stepOverBtnPressed", class: "btn", =>
+              @span "Next"
+            @button outlet: "stepInBtn", click: "stepInBtnPressed", class: "btn", =>
+              @span "Step"
+            @button outlet: "varBtn", click: "varBtnPressed", class: "btn", =>
+              @span "Variables"
+            @span class: "span between-buttons", =>
+              @span ""
+            @button outlet: "returnBtn", click: "returnBtnPressed", class: "btn", =>
+              @span "Return"
+            @button outlet: "continueBtn", click: "continueBtnPressed", class: "btn", =>
+              @span "Continue"
+            @span class: "span between-buttons", =>
+              @span ""
+            @button outlet: "clearBtn", click: "clearOutput", class: "btn", =>
+              @span "Clear"
+        @subview "commandEntryView", new TextEditorView
+          mini: true,
+          placeholderText: "> Enter debugger commands here"
 
   toggleBreakpoint: ->
     editor = atom.workspace.getActiveTextEditor()
@@ -70,6 +96,20 @@ class PythonDebuggerView extends View
     debuggerCmd = cmd + "\n"
     @backendDebugger.stdin.write(debuggerCmd) if @backendDebugger
     @output.append(debuggerCmd)
+
+  toggleSaynDebugMode: ->
+    @saynDebugMode = !@saynDebugMode
+    if @saynDebugMode
+      @addOutput("Sayn Debug Mode Enabled.")
+    else
+      @addOutput("Sayn Debug Mode Disabled.")
+
+  togglePipAutoInstall: ->
+    @autoUpdatePipDependencies = !@autoUpdatePipDependencies
+    if @autoUpdatePipDependencies
+      @addOutput("Pip Dependencies AutoUpdate Enabled.")
+    else
+      @addOutput("Pip Dependencies AutoUpdate Disabled.")
 
   stepOverBtnPressed: ->
     @backendDebugger?.stdin.write("n\n")
@@ -120,14 +160,23 @@ class PythonDebuggerView extends View
     pathToWorkspace = relative[0] || (path.dirname(activePath) if activePath?)
     pathToWorkspace
 
-  runApp: ->
+  runSayn: ->
     @stopApp() if @backendDebugger
     @debuggedFileArgs = @getInputArguments()
     console.log @debuggedFileArgs
-    if @pathsNotSet()
-      @askForPaths()
-      return
-    @runBackendDebugger()
+    if @autoUpdatePipDependencies
+      @runDebuggerWithPip("run")
+    else
+      @runBackendDebugger("run")
+
+  compileSayn: ->
+    @stopApp() if @backendDebugger
+    @debuggedFileArgs = @getInputArguments()
+    console.log @debuggedFileArgs
+    if @autoUpdatePipDependencies
+      @runDebuggerWithPip("compile")
+    else
+      @runBackendDebugger("compile")
 
   varBtnPressed: ->
     @backendDebugger?.stdin.write("for (__k, __v) in [(__k, __v) for __k, __v in globals().items() if not __k.startswith('__')]: print __k, '=', __v\n")
@@ -159,7 +208,7 @@ class PythonDebuggerView extends View
   highlightLineInEditor: (fileName, lineNumber) ->
     return unless fileName && lineNumber
     lineNumber = parseInt(lineNumber)
-    focusOnCmd = atom.config.get "python-debugger.focusOnCmd"
+    focusOnCmd = atom.config.get "sayn-debugger.focusOnCmd"
     options = {
       searchAllPanes: true,
       activateItem: true,
@@ -172,13 +221,49 @@ class PythonDebuggerView extends View
       editor.scrollToBufferPosition(position)
       # TODO: add decoration to current line?
 
-  runBackendDebugger: ->
+  runDebuggerWithPip: (command) ->
+    console.log("Running pip first...")
+    pythonEnv = atom.config.get "sayn-debugger.pythonEnv"
+    pip = path.join(pythonEnv, "bin/pip3")
+    console.log(pip)
+    requirementsFile = atom.config.get "sayn-debugger.requirementsFile"
+    args = ['install', '-r', requirementsFile]
+    options = {
+      cwd: @workspacePath()
+    }
+    @pipProcess = spawn(pip, args, options=options)
+
+    @pipProcess.stdout.on "data", (data) =>
+      @addOutput(data)
+    @pipProcess.stderr.on "data", (data) =>
+      @addOutput(data)
+    @pipProcess.on "exit", (code) =>
+      @checkPipExitStatusAndRunDebugger(code, command)
+
+  checkPipExitStatusAndRunDebugger: (code, command) ->
+    if code != 0
+      @addOutput("Pip: Exit Code " + code + ". Not Debugging.")
+    else
+      @runBackendDebugger(command)
+
+  runBackendDebugger: (command) ->
     args = [path.join(@backendDebuggerPath, @backendDebuggerName)]
-    args.push(@debuggedFileName)
-    args.push(arg) for arg in @debuggedFileArgs
-    python = atom.config.get "python-debugger.pythonExecutable"
-    console.log("python-debugger: using", python)
-    @backendDebugger = spawn python, args
+    pythonEnv = atom.config.get "sayn-debugger.pythonEnv"
+    # console.log("sayn-debugger: using python " + pythonEnv)
+    python = path.join(pythonEnv, "bin/python3")
+    sayn = path.join(pythonEnv, "bin/sayn")
+    args.push(sayn)
+    args.push(command)
+    for task in @debuggedFileArgs
+      args.push("-t")
+      args.push(task)
+    if @saynDebugMode
+      args.push("-d")
+    console.log("sayn-debugger: using python installation at ", python)
+    options = {
+      cwd: @workspacePath()
+    }
+    @backendDebugger = spawn(python, args, options=options)
 
     for breakpoint in @breakpointStore.breakpoints
       @backendDebugger.stdin.write(breakpoint.addCommand() + "\n")
@@ -216,20 +301,20 @@ class PythonDebuggerView extends View
     if atBottom
       @scrollToBottomOfOutput()
 
-  pathsNotSet: ->
-    !@debuggedFileName
-
-  askForPaths: ->
-    @addOutput("To set or change the entry point, set file to debug using e=fileName")
+  noArgs: ->
+    args = @tasksEntryView.getModel().getText()
+    return @stringIsBlank(args)
 
   initialize: (breakpointStore) ->
+    @subscriptions = new CompositeDisposable
     @breakpointStore = breakpointStore
     @debuggedFileName = @getCurrentFilePath()
     @backendDebuggerPath = @getDebuggerPath()
-    @addOutput("Welcome to Python Debugger for Atom!")
-    @addOutput("The file being debugged is: " + @debuggedFileName)
-    @askForPaths()
-    @subscriptions = atom.commands.add @element,
+    @addOutput("Welcome to SAYN Debugger for Atom!")
+
+    @subscriptions.add atom.tooltips.add @closeBtn,
+      title: 'Close'
+    @subscriptions.add atom.commands.add @element,
       "core:confirm": (event) =>
         if @parseAndSetPaths()
           @clearInputText()
@@ -248,7 +333,6 @@ class PythonDebuggerView extends View
       # TODO: check that file exists
       if fs.existsSync match[1]
         @debuggedFileName = match[1]
-        @addOutput("The file being debugged is: " + @debuggedFileName)
         return true
       else
         @addOutput("File #{match[1]} does not appear to exist")
@@ -261,7 +345,7 @@ class PythonDebuggerView extends View
     !str or str.replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0')
 
   getInputArguments: ->
-    args = @argsEntryView.getModel().getText()
+    args = @tasksEntryView.getModel().getText()
     return if !@stringIsBlank(args) then args.split(" ") else []
 
   getCommand: ->

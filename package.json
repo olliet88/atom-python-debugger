@@ -1,18 +1,18 @@
 {
-  "name": "python-debugger",
-  "main": "./lib/python-debugger",
+  "name": "sayn-debugger",
+  "main": "./lib/sayn-debugger",
   "version": "0.2.0",
-  "description": "Develop and Debug python projects",
+  "description": "Develop and Debug SAYN projects",
   "keywords": [
-    "python",
-    "develop python",
-    "debug python",
+    "sayn",
+    "develop sayn",
+    "debug sayn",
     "pdb"
   ],
   "activationCommands": {
     "atom-workspace": [
-      "python-debugger:toggle",
-      "python-debugger:breakpoint"
+      "sayn-debugger:toggle",
+      "sayn-debugger:breakpoint"
     ]
   },
   "repository": "https://github.com/dpo/atom-python-debugger",
@@ -25,5 +25,12 @@
   },
   "activationHooks": [
     "language-python:grammar-used"
-  ]
+  ],
+  "consumedServices": {
+    "status-bar": {
+      "versions": {
+        "^1.0.0": "consumeStatusBar"
+      }
+    }
+  }
 }

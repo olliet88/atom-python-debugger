@@ -1,0 +1,57 @@
+@import "ui-variables";
+@import "octicon-mixins";
+
+.command-output {
+  background-color: transparent;
+  height: 100px;
+  max-height: 100px;
+  overflow-y: scroll;
+}
+
+// For the buttons
+.btn-toolbar-top {
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  .btn-group.right {
+      float: right;
+  }
+  .btn-group.left {
+    .span.between-buttons {
+      padding-left: 10px;
+    }
+  }
+}
+
+.debug-options {
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-bottom: 10px;
+  .span.label {
+    padding-right: 10px;
+  }
+}
+
+.debug-inputs {
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.toggles {
+  padding-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.panel-body {
+  padding-left: 10px;
+  padding-top: 10px;
+  padding-right: 10px;
+  .command-output {
+    background-color: black;
+    border-radius: 5px;
+    font-family: courier;
+  }
+}

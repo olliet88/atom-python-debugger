@@ -7,6 +7,6 @@
 
 # For more detailed documentation see
 # https://atom.io/docs/latest/behind-atom-keymaps-in-depth
-"atom-text-editor[data-grammar='source python']":
-  "alt-r": "python-debugger:toggle"
-  "alt-shift-r": "python-debugger:breakpoint"
+".platform-darwin atom-workspace":
+  "cmd-alt-/": "sayn-debugger:toggle"
+  "cmd-alt-;": "sayn-debugger:breakpoint"
